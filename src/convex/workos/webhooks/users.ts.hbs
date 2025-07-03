@@ -40,7 +40,7 @@ export const handleUserWebhooks = httpAction(async (ctx, request) => {
         });
         break;
       case "session.created":
-        await ctx.env.runAction(
+        await ctx.runAction(
           internal.workos.internal.action.upsertUserFromWorkos,
           {
             externalId: event.data.userId,
