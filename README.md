@@ -10,7 +10,7 @@ A CLI tool scaffolding the setup for AuthKit integration with Convex and Nextjs.
 ## Run the init command below in your terminal:
 
 ```bash
-npx @sbkl-labs/stack init
+npx @sbkl/stack init
 ```
 
 ## What does the cli does?
