@@ -1,0 +1,70 @@
+import { ConvexError } from "convex/values";
+
+import { internal } from "@/convex/_generated/api";
+import { httpAction } from "@/convex/_generated/server";
+// import { env } from "@/convex/env";
+
+/**
+ * Handle WorkOS user webhooks.
+ * @param ctx - The context of the request.
+ * @param request - The request object.
+ * @returns The response object.
+ */
+export const handleUserWebhooks = httpAction(async (ctx, request) => {
+  const secret: string | null = null;
+  if (!secret) {
+    return new Response("Bad Request", {
+      status: 400,
+    });
+  }
+  const bodyText = await request.text();
+  const sigHeader = String(request.headers.get("workos-signature"));
+  try {
+    const event = await ctx.runAction(internal.workos.internal.action.verifyWorkOSWebhook, {
+      payload: bodyText,
+      signature: sigHeader,
+      secret,
+      // secret: env.WORKOS_WEBHOOK_USERS_SECRET,
+    });
+
+    switch (event.event) {
+      case "user.created":
+      case "user.updated":
+        await ctx.runMutation(internal.workos.internal.mutation.upsertUserFromWorkos, {
+          externalId: event.data.id,
+          email: event.data.email,
+          emailVerified: event.data.emailVerified,
+          firstName: event.data.firstName,
+          lastName: event.data.lastName,
+          profilePictureUrl: event.data.profilePictureUrl,
+        });
+        break;
+      case "session.created":
+        await ctx.env.runAction(
+          internal.workos.internal.action.upsertUserFromWorkos,
+          {
+            externalId: event.data.userId,
+          }
+        );
+        break;
+      case "user.deleted": {
+        await ctx.runMutation(internal.workos.internal.mutation.deleteUserFromWorkos, {
+          externalId: event.data.id,
+        });
+        break;
+      }
+      default:
+        return new Response("Unsupported WorkOS webhook event", {
+          status: 400,
+        });
+    }
+    return new Response("Webhook processed", {
+      status: 200,
+    });
+  } catch (error) {
+    console.error("Error verifying webhook event", error);
+    return new Response("Bad Request", {
+      status: 400,
+    });
+  }
+});

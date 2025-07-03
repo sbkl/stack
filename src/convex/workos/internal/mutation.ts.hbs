@@ -1,0 +1,166 @@
+import { ConvexError, v } from "convex/values";
+import { zodToConvex } from "convex-helpers/server/zod";
+
+import { internalMutation } from "@/convex/functions";
+import { Users } from "@/convex/users/table";
+import {
+  OrganisationDomainBaseFields,
+  Organisations,
+} from "@/convex/organisations/table";
+import { organisationDomainStatusValueSchema } from "@/schemas/workos";
+
+export const upsertUserFromWorkos = internalMutation({
+  args: Users.withoutSystemFields,
+  async handler(ctx, args) {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("externalId", (q) => q.eq("externalId", args.externalId))
+      .first();
+
+    if (user === null) {
+      return await ctx.db.insert("users", args);
+    }
+    await ctx.db.patch(user._id, args);
+
+    return user._id;
+  },
+});
+
+export const deleteUserFromWorkos = internalMutation({
+  args: { externalId: v.string() },
+  async handler(ctx, { externalId }) {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("externalId", (q) => q.eq("externalId", externalId))
+      .first();
+
+    if (user !== null) {
+      await ctx.db.delete(user._id);
+    } else {
+      console.warn(
+        `Can't delete user, there is none for user ID: ${externalId}`
+      );
+    }
+  },
+});
+
+export const upsertOrganisationFromWorkos = internalMutation({
+  args: {
+    ...Organisations.withoutSystemFields,
+    domains: v.optional(
+      v.array(
+        v.object({
+          ...OrganisationDomainBaseFields,
+        })
+      )
+    ),
+  },
+  async handler(ctx, args) {
+    const { domains, ...organisationArgs } = args;
+    const organisation = await ctx.db
+      .query("organisations")
+      .withIndex("externalId", (q) =>
+        q.eq("externalId", organisationArgs.externalId)
+      )
+      .first();
+
+    if (organisation === null) {
+      const organisationId = await ctx.db.insert(
+        "organisations",
+        organisationArgs
+      );
+      for (const domain of domains ?? []) {
+        await ctx.db.insert("organisationDomains", {
+          ...domain,
+          organisationId,
+        });
+      }
+
+      return organisationId;
+    }
+
+    await ctx.db.patch(organisation._id, organisationArgs);
+
+    const existingDomains = await ctx.db
+      .query("organisationDomains")
+      .withIndex("organisationId", (q) =>
+        q.eq("organisationId", organisation._id)
+      )
+      .collect();
+
+    for (const domain of existingDomains) {
+      if (!domains?.some((d) => d.domain === domain.domain)) {
+        await ctx.db.delete(domain._id);
+      }
+      if (domains?.some((d) => d.domain === domain.domain)) {
+        await ctx.db.patch(domain._id, {
+          ...domain,
+          organisationId: organisation._id,
+        });
+      }
+    }
+
+    for (const domain of domains ?? []) {
+      if (!existingDomains.some((d) => d.domain === domain.domain)) {
+        await ctx.db.insert("organisationDomains", {
+          ...domain,
+          organisationId: organisation._id,
+        });
+      }
+    }
+
+    return organisation._id;
+  },
+});
+
+export const deleteOrganisationFromWorkos = internalMutation({
+  args: {
+    externalId: v.string(),
+  },
+  async handler(ctx, { externalId }) {
+    const organisation = await ctx.db
+      .query("organisations")
+      .withIndex("externalId", (q) => q.eq("externalId", externalId))
+      .first();
+
+    if (!organisation) {
+      throw new ConvexError("Organisation not found");
+    }
+
+    const domains = await ctx.db
+      .query("organisationDomains")
+      .withIndex("organisationId", (q) =>
+        q.eq("organisationId", organisation._id)
+      )
+      .collect();
+
+    for (const domain of domains) {
+      await ctx.db.delete(domain._id);
+    }
+
+    await ctx.db.delete(organisation._id);
+  },
+});
+
+export const updateOrganisationDomainFromWorkos = internalMutation({
+  args: {
+    externalId: v.string(),
+    status: zodToConvex(organisationDomainStatusValueSchema),
+  },
+  async handler(ctx, { externalId, status }) {
+    const domain = await ctx.db
+      .query("organisationDomains")
+      .withIndex("externalId", (q) => q.eq("externalId", externalId))
+      .first();
+
+    if (domain === null) {
+      throw new ConvexError("Domain not found");
+    }
+
+    await ctx.db.patch(domain._id, {
+      status,
+    });
+
+    return domain._id;
+  },
+});

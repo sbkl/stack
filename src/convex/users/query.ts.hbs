@@ -1,0 +1,14 @@
+import { identifiedQuery } from "@/convex/functions";
+
+export const me = identifiedQuery({
+  args: {},
+  async handler(ctx) {
+    const identity = await ctx.auth.getUserIdentity();
+    const email = identity?.email;
+    if (!email) return null;
+    return await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", email))
+      .first();
+  },
+});

@@ -1,0 +1,125 @@
+"use node";
+
+import { ConvexError, v } from "convex/values";
+import { identifiedAction, publicAction } from "@/convex/functions";
+
+import { WorkOS } from "@workos-inc/node";
+import { internal } from "@/convex/_generated/api";
+import { env } from "@/convex/env";
+import { organisationDomainStatusValueSchema } from "@/schemas/workos";
+
+/**
+ * Get a SSO URL for a user.
+ * @param email - The email of the user to get a SSO URL for. The domain will be extracted to find the WorkOS organizationId related to the user.
+ * @returns The SSO URL to redirect the user to for authentication.
+ */
+export const getSSOUrl = publicAction({
+  args: {
+    email: v.string(),
+  },
+  async handler(ctx, { email }): Promise<string> {
+    const workos = new WorkOS(env.WORKOS_API_KEY);
+
+    const organisation = await ctx.runQuery(
+      internal.workos.internal.query.findOrganisationByEmail,
+      {
+        email,
+      }
+    );
+
+    if (organisation.found) {
+      const ssoUrl = workos.userManagement.getAuthorizationUrl({
+        clientId: env.WORKOS_CLIENT_ID,
+        organizationId: organisation.externalId,
+        redirectUri: env.WORKOS_REDIRECT_URI,
+      });
+
+      return ssoUrl;
+    }
+
+    const workosOrganisationListResponse =
+      await workos.organizations.listOrganizations({
+        domains: [organisation.domain],
+        limit: 100,
+      });
+
+    const workosOrganisations =
+      await workosOrganisationListResponse.autoPagination();
+
+    const workosOrganisation = workosOrganisations.find((org) =>
+      org.domains.map((d) => d.domain).includes(organisation.domain)
+    );
+
+    if (!workosOrganisation) {
+      throw new ConvexError("Not authorised");
+    }
+
+    const workosDomain = workosOrganisation.domains.find(
+      (d) => d.domain === organisation.domain
+    );
+
+    if (!workosDomain) {
+      throw new ConvexError("Not authorised");
+    }
+
+    const newOrganisationId = await ctx.runMutation(
+      internal.workos.internal.mutation.upsertOrganisationFromWorkos,
+      {
+        externalId: workosOrganisation.id,
+        name: workosOrganisation.name,
+        metadata: workosOrganisation.metadata,
+        domains: [
+          {
+            domain: organisation.domain,
+            externalId: workosOrganisation.id,
+            status: organisationDomainStatusValueSchema.parse(
+              workosDomain.state
+            ),
+          },
+        ],
+      }
+    );
+
+    const organisationExternalId = await ctx.runQuery(
+      internal.workos.internal.query.findOrganisationById,
+      {
+        id: newOrganisationId,
+      }
+    );
+
+    const ssoUrl = workos.userManagement.getAuthorizationUrl({
+      clientId: env.WORKOS_CLIENT_ID,
+      organizationId: organisationExternalId,
+      redirectUri: env.WORKOS_REDIRECT_URI,
+    });
+
+    return ssoUrl;
+  },
+});
+
+/**
+ * Sync a user with WorkOS.
+ * @returns void
+ */
+export const syncUserWithWorkos = identifiedAction({
+  args: {},
+  async handler(ctx) {
+    const workosUserId = ctx.identity.subject;
+
+    const workos = new WorkOS(env.WORKOS_API_KEY);
+
+    const workosUser = await workos.userManagement.getUser(workosUserId);
+
+    await ctx.runMutation(
+      internal.workos.internal.mutation.upsertUserFromWorkos,
+      {
+        externalId: workosUserId,
+        email: workosUser.email,
+        emailVerified: workosUser.emailVerified,
+        firstName: workosUser.firstName,
+        lastName: workosUser.lastName,
+        profilePictureUrl: workosUser.profilePictureUrl,
+      }
+    );
+  },
+});

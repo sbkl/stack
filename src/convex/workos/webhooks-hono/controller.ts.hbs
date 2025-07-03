@@ -1,0 +1,24 @@
+import type { ActionCtx } from "@/convex/_generated/server";
+import type { HonoWithConvex } from "convex-helpers/server/hono";
+
+import { Hono } from "hono";
+import { handleUserWebhooks } from "@/convex/workos/webhooks/users";
+import { handleOrganisationWebhooks } from "@/convex/workos/webhooks/organisations";
+// import { env } from "@/convex/env";
+// import { workosWebhookMiddleware } from "@/convex/workos/webhooks/middleware";
+
+const workosWebhooksController: HonoWithConvex<ActionCtx> = new Hono();
+
+workosWebhooksController.post(
+  "/users",
+  // workosWebhookMiddleware(env.WORKOS_WEBHOOK_USERS_SECRET),
+  handleUserWebhooks
+);
+
+workosWebhooksController.post(
+  "/organisations",
+  // workosWebhookMiddleware(env.WORKOS_WEBHOOK_ORGANISATIONS_SECRET),
+  handleOrganisationWebhooks
+);
+
+export { workosWebhooksController };

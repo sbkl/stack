@@ -1,0 +1,13 @@
+import { HttpRouterWithHono } from "convex-helpers/server/hono";
+import type { HonoWithConvex } from "convex-helpers/server/hono";
+
+import { Hono } from "hono";
+
+import type { ActionCtx } from "@/convex/_generated/server";
+import { workosWebhooksController } from "@/convex/workos/webhooks/controller";
+
+const app: HonoWithConvex<ActionCtx> = new Hono();
+
+app.route("/workos-webhooks", workosWebhooksController);
+
+export default new HttpRouterWithHono(app);

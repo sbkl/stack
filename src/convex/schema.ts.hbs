@@ -1,0 +1,19 @@
+import { defineSchema } from "convex/server";
+import { Users } from "@/convex/users/table";
+import {
+  OrganisationDomains,
+  Organisations,
+} from "@/convex/organisations/table";
+
+const schema = defineSchema({
+  users: Users.table
+    .index("externalId", ["externalId"])
+    .index("email", ["email"]),
+  organisations: Organisations.table.index("externalId", ["externalId"]),
+  organisationDomains: OrganisationDomains.table
+    .index("organisationId", ["organisationId"])
+    .index("externalId", ["externalId"])
+    .index("domain", ["domain"]),
+});
+
+export default schema;

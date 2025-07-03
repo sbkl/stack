@@ -1,0 +1,113 @@
+"use client";
+
+import { useMe } from "@/queries/auth";
+
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Icon } from "@/components/ui/icon";
+
+import { Skeleton } from "@/components/ui/skeleton";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { useAuth } from "@workos-inc/authkit-nextjs/components";
+import {
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar,
+} from "@/components/ui/sidebar";
+import { DropdownMenuGroup } from "@radix-ui/react-dropdown-menu";
+
+export function UserNav() {
+  const { signOut } = useAuth();
+  const { data: user, isPending } = useMe();
+  const { isMobile } = useSidebar();
+  if (isPending)
+    return (
+      <div className="peer/menu-button ring-sidebar-ring flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none transition-[width,height,padding] group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0">
+        <Skeleton className="size-8 rounded-lg" />
+        <div className="grid flex-1 overflow-hidden rounded-md text-left text-sm leading-tight">
+          <Skeleton className="h-8 w-full" />
+        </div>
+      </div>
+    );
+  if (!user) return null;
+
+  return (
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <SidebarMenuButton
+              size="lg"
+              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+            >
+              <Avatar className="h-8 w-8 rounded-lg">
+                <AvatarImage
+                  src={user.profilePictureUrl ?? ""}
+                  alt={`${user.firstName} ${user.lastName}`}
+                />
+                <AvatarFallback className="rounded-lg">
+                  {user.firstName?.charAt(0) ?? ""}
+                  {user.lastName?.charAt(0) ?? ""}
+                </AvatarFallback>
+              </Avatar>
+              <div className="grid flex-1 text-left text-sm leading-tight">
+                <span className="truncate font-medium">
+                  {user.firstName} {user.lastName}
+                </span>
+                <span className="truncate text-xs">{user.email}</span>
+              </div>
+              <Icon name="CaretSortIcon" className="ml-auto size-4" />
+            </SidebarMenuButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+            side={isMobile ? "bottom" : "right"}
+            align="end"
+            sideOffset={4}
+          >
+            <DropdownMenuLabel className="p-0 font-normal">
+              <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+                <Avatar className="h-8 w-8 rounded-lg">
+                  <AvatarImage
+                    src={user.profilePictureUrl ?? ""}
+                    alt={`${user.firstName} ${user.lastName}`}
+                  />
+                  <AvatarFallback className="rounded-lg">
+                    {user.firstName?.charAt(0) ?? ""}
+                    {user.lastName?.charAt(0) ?? ""}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-medium">
+                    {user.firstName} {user.lastName}
+                  </span>
+                  <span className="truncate text-xs">{user.email}</span>
+                </div>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>
+              <ThemeToggle />
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="flex items-center gap-2"
+              onSelect={() => void signOut()}
+            >
+              <Icon name="ExitIcon" className="size-4" />
+              Log out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SidebarMenuItem>
+    </SidebarMenu>
+  );
+}

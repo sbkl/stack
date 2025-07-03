@@ -1,0 +1,32 @@
+"use client";
+
+import { Button } from "@/components/ui/button";
+import { LoadingDots } from "@/components/ui/loading-dots";
+import { Authenticated, AuthLoading, Unauthenticated } from "convex/react";
+import Link from "next/link";
+
+export function Home() {
+  return (
+    <>
+      <AuthLoading>
+        <div className="w-full h-full flex items-center justify-center">
+          <LoadingDots size="size-4" />
+        </div>
+      </AuthLoading>
+      <Unauthenticated>
+        <div className="w-full h-full flex items-center justify-center">
+          <Button asChild>
+            <Link href="/auth">Sign in</Link>
+          </Button>
+        </div>
+      </Unauthenticated>
+      <Authenticated>
+        <div className="w-full h-full flex items-center justify-center">
+          <Button asChild>
+            <Link href="/dashboard">Dashboard</Link>
+          </Button>
+        </div>
+      </Authenticated>
+    </>
+  );
+}

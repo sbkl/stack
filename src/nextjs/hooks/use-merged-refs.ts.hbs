@@ -1,0 +1,16 @@
+"use client";
+
+import * as React from "react";
+
+export function useMergedRefs<T>(...refs: Array<React.Ref<T> | undefined>) {
+  return React.useCallback((value: T | null) => {
+    for (const ref of refs) {
+      if (!ref) continue;
+      if (typeof ref === "function") {
+        ref(value);
+      } else {
+        ref.current = value;
+      }
+    }
+  }, refs);
+}

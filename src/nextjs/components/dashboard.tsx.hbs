@@ -1,0 +1,23 @@
+"use client";
+
+import { Authenticated, AuthLoading } from "convex/react";
+import { LoadingDots } from "@/components/ui/loading-dots";
+
+export function Dashboard() {
+  return (
+    <>
+      <AuthLoading>
+        <div className="w-full h-full flex items-center justify-center">
+          <LoadingDots size="size-4" />
+        </div>
+      </AuthLoading>
+      <Authenticated>
+        <div className="h-full w-full">
+          <div className="max-w-lg mx-auto flex flex-col items-center justify-center h-full w-full">
+            Dashboard Page
+          </div>
+        </div>
+      </Authenticated>
+    </>
+  );
+}

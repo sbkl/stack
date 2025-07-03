@@ -1,0 +1,64 @@
+import { parse } from "tldts";
+import { ConvexError, v } from "convex/values";
+
+import { internalQuery } from "@/convex/functions";
+
+export const findOrganisationByEmail = internalQuery({
+  args: {
+    email: v.string(),
+  },
+  async handler(
+    ctx,
+    { email }
+  ): Promise<
+    { found: true; externalId: string } | { found: false; domain: string }
+  > {
+    const parsedUrl = parse(email);
+    const domain = parsedUrl.domain;
+
+    if (!domain) {
+      throw new ConvexError("Invalid email");
+    }
+
+    const organisationDomain = await ctx.db
+      .query("organisationDomains")
+      .withIndex("domain", (q) => q.eq("domain", domain))
+      .first();
+
+    if (!organisationDomain) {
+      return {
+        found: false,
+        domain,
+      };
+    }
+
+    const organisation = await ctx.db
+      .query("organisations")
+      .withIndex("by_id", (q) => q.eq("_id", organisationDomain.organisationId))
+      .first();
+
+    if (!organisation) {
+      throw new ConvexError("Not authorised");
+    }
+
+    return {
+      found: true,
+      externalId: organisation.externalId,
+    };
+  },
+});
+
+export const findOrganisationById = internalQuery({
+  args: {
+    id: v.id("organisations"),
+  },
+  async handler(ctx, { id }): Promise<string> {
+    const organisation = await ctx.db.get(id);
+
+    if (!organisation) {
+      throw new ConvexError("Not authorised");
+    }
+
+    return organisation.externalId;
+  },
+});

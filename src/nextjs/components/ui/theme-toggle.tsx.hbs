@@ -1,0 +1,55 @@
+"use client";
+
+import * as React from "react";
+import { useTheme } from "next-themes";
+
+import {
+  DropdownMenuPortal,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import { Icon } from "@/components/ui/icon";
+
+export function ThemeToggle() {
+  const { setTheme, theme } = useTheme();
+
+  return (
+    <DropdownMenuSub>
+      <DropdownMenuSubTrigger className="flex items-center gap-2">
+        {theme === "dark" ? (
+          <Icon name="MoonIcon" className="size-4" />
+        ) : (
+          <Icon name="SunIcon" className="size-4" />
+        )}
+        Theme
+      </DropdownMenuSubTrigger>
+      <DropdownMenuPortal>
+        <DropdownMenuSubContent className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg">
+          <DropdownMenuItem
+            className="flex h-8 items-center gap-2 px-2 py-1.5 text-sm text-foreground focus:bg-accent focus:text-accent-foreground focus-visible:outline-none"
+            onClick={() => setTheme("light")}
+          >
+            <Icon name="SunIcon" className="size-4" />
+            Light
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="flex h-8 items-center gap-2 px-2 py-1.5 text-sm text-foreground focus:bg-accent focus:text-accent-foreground focus-visible:outline-none"
+            onClick={() => setTheme("dark")}
+          >
+            <Icon name="MoonIcon" className="size-4" />
+            Dark
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="flex h-8 items-center gap-2 px-2 py-1.5 text-sm text-foreground focus:bg-accent focus:text-accent-foreground focus-visible:outline-none"
+            onClick={() => setTheme("system")}
+          >
+            <Icon name="DesktopIcon" className="size-4" />
+            System
+          </DropdownMenuItem>
+        </DropdownMenuSubContent>
+      </DropdownMenuPortal>
+    </DropdownMenuSub>
+  );
+}

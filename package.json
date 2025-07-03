@@ -1,0 +1,59 @@
+{
+  "name": "@sbkl-labs/stack",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "bin": {
+    "@sbkl-labs/stack": "./dist/index.cjs"
+  },
+  "files": [
+    "dist",
+    "src/convex",
+    "src/nextjs",
+    "src/schemas",
+    "src/convex.json"
+  ],
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "esbuild src/cli/index.ts --bundle --platform=node --format=cjs --outfile=dist/index.cjs --banner:js=\"#!/usr/bin/env node\"",
+    "prepare": "npm run build",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "authkit",
+    "convex",
+    "react",
+    "typescript",
+    "sbkl"
+  ],
+  "author": "sbkl Limited",
+  "license": "MIT",
+  "description": "",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sbkl/stack.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sbkl/stack/issues"
+  },
+  "homepage": "https://github.com/sbkl/stack#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "fs-extra": "^11.3.0",
+    "handlebars": "^4.7.8",
+    "prompts": "^2.4.2",
+    "slug": "^11.0.0"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/prompts": "^2.4.9",
+    "@types/slug": "^5.0.9",
+    "esbuild": "^0.20.0",
+    "typescript": "^5.8.3"
+  }
+}

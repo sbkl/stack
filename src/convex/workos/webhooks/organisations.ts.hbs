@@ -1,0 +1,85 @@
+import { organisationDomainStatusValueSchema } from "@/schemas/workos";
+import { internal } from "@/convex/_generated/api";
+import { httpAction } from "@/convex/_generated/server";
+// import { env } from "@/convex/env";
+
+/**
+ * Handle WorkOS organisation webhooks.
+ * @param ctx - The context of the request.
+ * @param request - The request object.
+ * @returns The response object.
+ */
+export const handleOrganisationWebhooks = httpAction(async (ctx, request) => {  
+  const secret: string | null = null;
+  if (!secret) {
+    return new Response("Bad Request", {
+      status: 400,
+    });
+  }
+  const bodyText = await request.text();
+  const sigHeader = String(request.headers.get("workos-signature"));
+  try {
+    const event = await ctx.runAction(internal.workos.internal.action.verifyWorkOSWebhook, {
+      payload: bodyText,
+      signature: sigHeader,
+      secret,
+      // secret: env.WORKOS_WEBHOOK_ORGANISATIONS_SECRET,
+    });
+
+    switch (event.event) {
+      case "organization.created":
+      case "organization.updated":
+        await ctx.runMutation(internal.workos.internal.mutation.upsertOrganisationFromWorkos, {
+          externalId: event.data.id,
+          name: event.data.name,
+          metadata: event.data.metadata,
+          domains: event.data.domains.map((domain) => {
+            const parsedState = organisationDomainStatusValueSchema.safeParse(domain.state);
+
+            return {
+              domain: domain.domain,
+              externalId: domain.id,
+              status: parsedState.success ? parsedState.data : "pending",
+            };
+          }),
+        });
+        break;
+      case "organization.deleted": {
+        await ctx.runMutation(internal.workos.internal.mutation.deleteOrganisationFromWorkos, {
+          externalId: event.data.id,
+        });
+        break;
+      }
+      case "organization_domain.verified":
+        await ctx.runMutation(
+          internal.workos.internal.mutation.updateOrganisationDomainFromWorkos,
+          {
+            externalId: event.data.id,
+            status: "verified",
+          },
+        );
+        break;
+      case "organization_domain.verification_failed":
+        await ctx.runMutation(
+          internal.workos.internal.mutation.updateOrganisationDomainFromWorkos,
+          {
+            externalId: event.data.id,
+            status: "failed",
+          },
+        );
+        break;
+      default:
+        return new Response("Unsupported WorkOS webhook event", {
+          status: 400,
+        });
+    }
+    return new Response("Webhook processed", {
+      status: 200,
+    });
+  } catch (error) {
+    console.error("Error verifying webhook event", error);
+    return new Response("Bad Request", {
+      status: 400,
+    });
+  }
+});

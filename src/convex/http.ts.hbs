@@ -1,0 +1,20 @@
+import { httpRouter } from "convex/server";
+
+import { handleUserWebhooks } from "@/convex/workos/webhooks/users";
+import { handleOrganisationWebhooks } from "@/convex/workos/webhooks/organisations";
+
+const http = httpRouter();
+
+http.route({
+  path: "/workos-webhooks/users",
+  method: "POST",
+  handler: handleUserWebhooks,
+});
+
+http.route({
+  path: "/workos-webhooks/organisations",
+  method: "POST",
+  handler: handleOrganisationWebhooks,
+});
+
+export default http;

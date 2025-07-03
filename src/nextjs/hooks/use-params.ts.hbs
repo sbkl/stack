@@ -1,0 +1,133 @@
+"use client";
+
+import { Id, TableNames } from "@/convex/_generated/dataModel";
+
+import {
+  useParams as useNextParams,
+  useSearchParams as useNextSearchParams,
+} from "next/navigation";
+
+/**
+ * Get the singular param name for a table name.
+ * @param tableName - The table name.
+ * @returns The singular param name.
+ */
+function getSingularParamName(tableName: TableNames): string {
+  const singular = tableName.endsWith("ies")
+    ? `${tableName.slice(0, -3)}y`
+    : tableName.slice(0, -1);
+
+  return `${singular}Id`;
+}
+
+/**
+ * Get the route dynamic param value as a Convex ID. Returns undefined if the param is not found.
+ * @param tableName - The table name.
+ * @returns The value of the dynamic route param as a Convex ID or undefined if the param is not found.
+ */
+export function useParamId<T extends TableNames>(tableName: T) {
+  const params = useNextParams();
+  const value = getSingularParamName(tableName);
+  return params[value] as Id<T> | undefined;
+}
+
+/**
+ * Get the route dynamic param value as a Convex ID. Throws an error if the param is not found.
+ * @param tableName - The table name.
+ * @returns The value of the dynamic route param as a Convex ID.
+ */
+export function useParamIdOrThrow<T extends TableNames>(tableName: T) {
+  const params = useNextParams();
+  const value = getSingularParamName(tableName);
+  if (typeof params[value] !== "string") {
+    throw new Error(`${value} is required`);
+  }
+  return params[value] as Id<T> | undefined;
+}
+
+type ParamType = [] | undefined;
+type ParamReturn<T extends ParamType> = T extends []
+  ? string[] | undefined
+  : string | undefined;
+
+/**
+ * Get the route dynamic param value as a string or array of strings. Returns undefined if the param is not found.
+ * @param key - The param name.
+ * @param type - The type of the param.
+ * @returns The value of the dynamic route param as a string or array of strings or undefined if the param is not found.
+ */
+export function useParam<T extends ParamType = undefined>(
+  key: string,
+  type?: T
+): ParamReturn<T> {
+  const params = useNextParams();
+  const value = params[key];
+
+  if (typeof type === "undefined") {
+    return (typeof value === "string" ? value : undefined) as ParamReturn<T>;
+  }
+  return (Array.isArray(value) ? value : undefined) as ParamReturn<T>;
+}
+
+/**
+ * Get the route dynamic param value as a string or array of strings. Throws an error if the param is not found or found with the wrong type.
+ * @param key - The param name.
+ * @param type - The type of the param.
+ * @returns The value of the dynamic route param as a string or array of strings based on the type argument.
+ */
+export function useParamOrThrow<T extends ParamType = undefined>(
+  key: string,
+  type?: T
+): ParamReturn<T> {
+  const params = useNextParams();
+  const value = params[key];
+
+  if (typeof type === "undefined") {
+    if (typeof value !== "string") {
+      throw new Error(
+        typeof value === "undefined"
+          ? `Param ${key} not found.`
+          : `Param ${key} was found as an array ${JSON.stringify(
+              value
+            )} but is expected to be a string. Add "[]" as a second argument to useParamsOrThrow to get an array.`
+      );
+    }
+    return value as ParamReturn<T>;
+  }
+  if (typeof value === "undefined" || typeof value === "string") {
+    throw new Error(
+      typeof value === "undefined"
+        ? `Param ${key} not found.`
+        : `Param ${key} was found as a string ${JSON.stringify(
+            value
+          )} but is expected to be an array. Remove "[]" as a second argument to useParamsOrThrow to get a string.`
+    );
+  }
+  return value as ParamReturn<T>;
+}
+
+/**
+ * Get the search param value as a string. Returns undefined if the param is not found.
+ * @param key - The param name.
+ * @returns The value of the search param as a string or undefined if the param is not found.
+ */
+export function useSearchParam(key: string) {
+  const params = useNextSearchParams();
+  const value = params.get(key);
+
+  return typeof value === "string" ? value : undefined;
+}
+
+/**
+ * Get the search param value as a string. Throws an error if the param is not found.
+ * @param key - The param name.
+ * @returns The value of the search param as a string.
+ */
+export function useSearchParamOrThrow(key: string) {
+  const params = useNextSearchParams();
+  const value = params.get(key);
+  if (typeof value !== "string") {
+    throw new Error(`Search param ${key} not found`);
+  }
+  return value;
+}

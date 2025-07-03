@@ -1,0 +1,101 @@
+"use client";
+
+import * as React from "react";
+
+import { z } from "zod";
+
+import { chunk } from "@/lib/chunk";
+
+const customErrorMap: z.ZodErrorMap = (issue, ctx) => {
+  if (issue.code === z.ZodIssueCode.invalid_type) {
+    if (issue.expected === "string" && issue.received === "null") {
+      return { message: `${issue.path[1]} is required` };
+    }
+    if (issue.expected === "number" && issue.received != "number") {
+      return { message: `${issue.path[1]} must be a number` };
+    }
+  }
+  return { message: ctx.defaultError };
+};
+
+z.setErrorMap(customErrorMap);
+
+const splitRegex = /\r\n(?![^\t]*"\t)/;
+
+export function useCopyPaste<TItem extends z.ZodTypeAny>(
+  schema: TItem,
+  onPasted?: (rows: TItem["_output"][]) => void
+) {
+  const [data, setData] = React.useState<TItem["_output"][] | undefined>(
+    undefined
+  );
+  async function onPaste() {
+    let data = await navigator.clipboard.readText();
+    const rows: (string | null)[][] = [];
+    data.split(splitRegex).forEach((row) => {
+      let currentField: string | null = null;
+      const currentRow: (string | null)[] = [];
+
+      for (let i = 0; i < row.length; i++) {
+        const char = row[i];
+
+        if (char === "\t") {
+          // Add the current field to the row and reset it
+          currentRow.push(currentField);
+          currentField = null;
+        } else {
+          // Build the current field character by character
+          if (currentField === null) {
+            currentField = char ?? null;
+          } else {
+            currentField += char;
+          }
+        }
+      }
+
+      // Don't forget to add the last field to the row
+      currentRow.push(currentField);
+      rows.push(currentRow);
+    });
+    let headerRow = rows[0];
+    rows.shift();
+    const items = rows.reduce<Record<string, string>[]>((carry, row) => {
+      if (!headerRow) return carry;
+      const values = row.map((value) =>
+        !value ? value : value.trim() === "" ? null : value.trim()
+      );
+      let item: Record<string, string> = {};
+      headerRow.forEach((a, index) => {
+        if (a) {
+          Object.assign(item, {
+            [a]: values[index]?.trim().replaceAll('"', "") ?? null,
+          });
+        }
+      });
+      carry.push(item);
+      return carry;
+    }, []);
+
+    const parsedData = chunk(items, { chunkSize: 1000 }).reduce<
+      TItem["_output"][]
+    >((carry, chunk) => {
+      const parsed = z.array(schema).safeParse(chunk);
+      console.log("parsed", parsed);
+      carry = [...carry, ...(parsed.success ? parsed.data : [])];
+
+      return carry;
+    }, []);
+
+    if (parsedData) {
+      setData(parsedData);
+      if (onPasted) {
+        onPasted(parsedData);
+      }
+    }
+  }
+
+  return {
+    data,
+    onPaste,
+  };
+}

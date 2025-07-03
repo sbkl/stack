@@ -1,0 +1,31 @@
+"use client";
+
+import { convexQuery } from "@convex-dev/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { FunctionArgs, FunctionReference } from "convex/server";
+
+import { useSearchParam } from "@/hooks/use-params";
+
+export function useSearchQuery<
+  ConvexQueryReference extends FunctionReference<"query", "public">,
+  Args extends FunctionArgs<ConvexQueryReference> | "skip",
+  Options extends {
+    searchQuery?: true;
+  },
+>(funcRef: ConvexQueryReference, queryArgs: Args, options?: Options) {
+  const q = useSearchParam("q");
+
+  const query = useQuery({
+    ...convexQuery(
+      funcRef,
+      options?.searchQuery
+        ? {
+            ...queryArgs,
+            searchQuery: q,
+          }
+        : queryArgs
+    ),
+    placeholderData: (prev) => prev,
+  });
+  return query;
+}

@@ -1,0 +1,65 @@
+"use node";
+
+import { ConvexError, v } from "convex/values";
+import type { Event as WorkOSEvent } from "@workos-inc/node";
+import { WorkOS } from "@workos-inc/node";
+
+import { env } from "@/convex/env";
+import { internalAction } from "@/convex/functions";
+import { internal } from "@/convex/_generated/api";
+
+/**
+ * Verify a WorkOS webhook event.
+ * @param payload - The payload of the webhook event.
+ * @param signature - The signature of the webhook event.
+ * @param secret - The secret of the webhook event.
+ * @returns The WorkOS event.
+ */
+export const verifyWorkOSWebhook = internalAction({
+  args: {
+    payload: v.string(),
+    signature: v.string(),
+    secret: v.string(),
+  },
+  handler: async (
+    _ctx,
+    { payload, signature, secret }
+  ): Promise<WorkOSEvent> => {
+    const workos = new WorkOS(env.WORKOS_API_KEY);
+    return await workos.webhooks.constructEvent({
+      payload: JSON.parse(payload),
+      sigHeader: signature,
+      secret,
+    });
+  },
+});
+
+/**
+ * Upsert a user from WorkOS.
+ * @param externalId - The user ID from WorkOS for the user to upsert.
+ */
+export const upsertUserFromWorkos = internalAction({
+  args: {
+    externalId: v.string(),
+  },
+  async handler(ctx, { externalId }) {
+    const workos = new WorkOS(env.WORKOS_API_KEY);
+    const workosUser = await workos.userManagement.getUser(externalId);
+
+    if (!workosUser) {
+      throw new ConvexError("workosUser not found");
+    }
+
+    await ctx.runMutation(
+      internal.workos.internal.mutation.upsertUserFromWorkos,
+      {
+        externalId: workosUser.id,
+        email: workosUser.email,
+        emailVerified: workosUser.emailVerified,
+        firstName: workosUser.firstName,
+        lastName: workosUser.lastName,
+        profilePictureUrl: workosUser.profilePictureUrl,
+      }
+    );
+  },
+});

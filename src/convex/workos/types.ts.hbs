@@ -1,0 +1,9 @@
+import { ActionCtx } from "@/convex/_generated/server";
+import type { Event as WorkOSEvent } from "@workos-inc/node";
+
+export type HttpHonoEnv = {
+  Variables: {
+    workosEvent: WorkOSEvent;
+  };
+  Bindings: ActionCtx;
+};
