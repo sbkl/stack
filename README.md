@@ -39,6 +39,24 @@ npx @sbkl/stack init
 - Setup convex and the integration with authkit
 - Setup the nextjs boilerplate for convex, tanstack query, tanstack from and shadcn components for the auth component.
 
+## Workos JWT template
+
+In your workos dashboard, go to `Authentication > Sessions` and make sure to add the audience claim ("aud") to the same value than the `applicationID` in your `auth.config.ts` in your convex folder.
+
+```json
+{
+  "aud": "convex",
+  // whatever you need below
+  "name": "{{ user.first_name }} {{ user.last_name }}",
+  "email": {{user.email}},
+  "picture": {{user.profile_picture_url}},
+  "given_name": {{user.first_name}},
+  "updated_at": {{user.updated_at}},
+  "family_name": {{user.last_name}},
+  "email_verified": {{user.email_verified}}
+}
+```
+
 ## Workos redirects
 
 Go to your Workos dashboard > Redirects
