@@ -327,7 +327,7 @@ export function installDependencies({
     "next-themes",
     "sonner",
     "tldts",
-    "zod",
+    "zod@3.24.2",
     ...(httpType === "hono" ? ["@hono/zod-validator", "hono"] : []),
     ...(manageEmailsWithResend ? ["resend"] : []),
   ];
